@@ -37,7 +37,7 @@
                         <configuration>
                             <resources>
                                 <resource>
-                                    <directory>dist/webext</directory>
+                                    <directory>dist/webext/app</directory>
                                 </resource>
                             </resources>
                         </configuration>
