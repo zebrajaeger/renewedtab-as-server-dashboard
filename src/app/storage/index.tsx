@@ -13,6 +13,97 @@ export interface IStorage {
 }
 
 
+class RemoteStorage implements browser.storage.StorageArea {
+    private url: string;
+
+    constructor() {
+        // Basis-URL des REST-Services
+        this.url = `${window.location.protocol}//${window.location.hostname}:8255/config`;
+    }
+
+    // Methode zum Abrufen von Daten (HTTP GET)
+    async get(keys: string | string[] | null | undefined): Promise<{ [key: string]: any }> {
+        try {
+            // Wenn keys null oder undefined ist, alle Daten abrufen
+            const response = await fetch(this.url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Keys': keys ? JSON.stringify(keys) : '', // Falls keys null/undefined, leeren String senden
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch data: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            throw error;
+        }
+    }
+    // Methode zum Setzen von Daten (HTTP POST)
+    async set(items: {[key: string]: any}): Promise<void> {
+        try {
+            const response = await fetch(this.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(items), // Die zu speichernden Daten im Body der Anfrage
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to save data: ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error saving data:', error);
+            throw error;
+        }
+    }
+
+    // Methode zum Entfernen von Daten (HTTP DELETE)
+    async remove(keys: string | string[]): Promise<void> {
+        try {
+            const response = await fetch(this.url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Keys': JSON.stringify(keys), // Die Schlüssel als Header senden
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to remove data: ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error removing data:', error);
+            throw error;
+        }
+    }
+
+    // Methode zum Löschen aller Daten (HTTP DELETE ohne Schlüssel)
+    async clear(): Promise<void> {
+        try {
+            const response = await fetch(this.url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to clear data: ${response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            throw error;
+        }
+    }
+}
+
+
 class WebExtStorage implements IStorage {
 	private readonly values: Promise<{ [key: string]: any }>;
 
@@ -96,8 +187,8 @@ class LocalStorage implements IStorage {
 			window.localStorage.setItem(key, json);
 		} catch (e: any) {
 			if (typeof e.toString() != "function" ||
-					!e.toString().includes("Quota") ||
-					typeof browser == "undefined") {
+				!e.toString().includes("Quota") ||
+				typeof browser == "undefined") {
 				throw e;
 			}
 
@@ -145,7 +236,7 @@ class DelegateStorage implements IStorage {
 
 
 if (typeof browser === 'undefined' && typeof navigator !== "undefined" &&
-		navigator.storage && navigator.storage.persist) {
+	navigator.storage && navigator.storage.persist) {
 	navigator.storage.persist()
 		.then((isPersisted) =>
 			console.log(`Persisted storage granted: ${isPersisted}`))
@@ -153,8 +244,10 @@ if (typeof browser === 'undefined' && typeof navigator !== "undefined" &&
 }
 
 
-export const storage : IStorage =
-	(typeof browser !== 'undefined') ? new WebExtStorage(browser.storage.local) : new LocalStorage();
+export const storage : IStorage = new WebExtStorage(new RemoteStorage());
+
+// export const storage : IStorage =
+// 	(typeof browser !== 'undefined') ? new WebExtStorage(browser.storage.local) : new LocalStorage();
 
 export const largeStorage : IStorage = new DelegateStorage(storage, "large-");
 

@@ -142,3 +142,8 @@ dist
 .vscode-test
 
 # End of https://www.toptal.com/developers/gitignore/api/node,linux
+
+# ZJ
+node
+node_modules
+target
